@@ -20,12 +20,31 @@ jobs:
       - name: Install PyInstaller
         run: python -m pip install --upgrade pip pyinstaller
 
+      - name: Download FFmpeg
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-extracted
+          $bin = Get-ChildItem -Path ffmpeg-extracted -Directory | Select-Object -First 1
+          New-Item -ItemType Directory -Force -Path dist\ffmpeg | Out-Null
+          Copy-Item "$($bin.FullName)\bin\ffmpeg.exe" dist\ffmpeg\ffmpeg.exe
+          Copy-Item "$($bin.FullName)\bin\ffprobe.exe" dist\ffmpeg\ffprobe.exe
+
       - name: Build EXE
         run: pyinstaller --noconfirm --clean --onefile --windowed --name ChuangeiVideoEditor video_editor_gui.py
 
-      - name: Upload EXE
+      - name: Assemble portable package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package\ffmpeg | Out-Null
+          Copy-Item dist\ChuangeiVideoEditor.exe package\ChuangeiVideoEditor.exe
+          Copy-Item dist\ffmpeg\ffmpeg.exe package\ffmpeg\ffmpeg.exe
+          Copy-Item dist\ffmpeg\ffprobe.exe package\ffmpeg\ffprobe.exe
+          Compress-Archive -Path package\* -DestinationPath ChuangeiVideoEditor-Windows.zip -Force
+
+      - name: Upload Windows package
         uses: actions/upload-artifact@v4
         with:
           name: ChuangeiVideoEditor-Windows
-          path: dist/ChuangeiVideoEditor.exe
+          path: ChuangeiVideoEditor-Windows.zip
           if-no-files-found: error
