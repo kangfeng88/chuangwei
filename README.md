@@ -1,37 +1,52 @@
 # Python 视频自动剪辑器
 
-一个基于 Python + FFmpeg 的简单视频批处理工具。
+一个基于 Python + FFmpeg 的视频批处理工具。
 
-## 功能
+## 输出尺寸
 
-- 自动读取 `input/` 中的视频
-- 按文件名顺序处理
-- 可选限制每个视频的最大时长
-- 合并为一个 MP4
-- 输出到 `output/final.mp4`
+支持两种模式：
 
-## 环境
+- **横屏**：1920 × 1080（16:9）
+- **竖屏**：1080 × 1920（9:16）
 
-Windows 安装 FFmpeg，并确保 `ffmpeg` 和 `ffprobe` 可以在终端直接运行。
+程序会自动缩放并居中裁切，避免画面被拉伸。
 
 ## 使用
 
-把视频放进 `input/`，然后运行：
+把视频放进 `input/`。
+
+横屏：
 
 ```bash
-python video_auto_editor.py
+python video_auto_editor.py --mode landscape
+```
+
+竖屏：
+
+```bash
+python video_auto_editor.py --mode portrait
 ```
 
 每个视频最多保留 30 秒：
 
 ```bash
-python video_auto_editor.py --max-seconds 30
+python video_auto_editor.py --mode landscape --max-seconds 30
 ```
 
-指定目录：
+默认输出：
 
-```bash
-python video_auto_editor.py --input input --output output/final.mp4
-```
+- `output/final_landscape_1920x1080.mp4`
+- `output/final_portrait_1080x1920.mp4`
 
-下一步可以继续加入：自动去静音、字幕、BGM、横竖屏转换、片头片尾和 AI 精彩片段检测。
+## 环境
+
+Windows 安装 FFmpeg，并确保 `ffmpeg` 和 `ffprobe` 可以在终端直接运行。
+
+## 后续计划
+
+- 自动去除静音/空白
+- 自动字幕
+- BGM
+- AI 精彩片段检测
+- 片头片尾
+- 更友好的 Windows 图形界面
