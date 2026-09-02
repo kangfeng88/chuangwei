@@ -21,7 +21,7 @@ OUTPUTS = DATA / "outputs"
 for directory in (UPLOADS, OUTPUTS):
     directory.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title="创维自动视频", version="0.2.0")
+app = FastAPI(title="创维自动视频", version="0.2.1")
 accounts: dict[str, Account] = {}
 jobs: dict[str, dict] = {}
 lock = threading.Lock()
@@ -53,7 +53,7 @@ def _run_job(job_id: str, account_id: str, source: Path, count: int, mode: str) 
         job["error"] = str(exc)[:500]
         account = _account(account_id)
         with lock:
-            account.quota_used = max(0, account.quota_used - count)
+            account.refund_generation(count)
     finally:
         source.unlink(missing_ok=True)
 
@@ -76,7 +76,7 @@ def plan() -> dict[str, int]:
 @app.get("/accounts/{account_id}/quota")
 def quota(account_id: str) -> dict:
     account = _account(account_id)
-    return {"active": account.active, "quota_total": account.quota_total, "quota_used": account.quota_used, "quota_remaining": account.quota_remaining, "period_end": account.period_end.isoformat() if account.period_end else None}
+    return {"active": account.is_active_now(), "quota_total": account.quota_total, "quota_used": account.quota_used, "quota_remaining": account.quota_remaining, "period_end": account.period_end.isoformat() if account.period_end else None}
 
 
 @app.post("/generate")
@@ -88,7 +88,7 @@ def generate(background_tasks: BackgroundTasks, account_id: str = Form(...), cou
     if not video.filename:
         raise HTTPException(400, "缺少视频文件。")
     account = _account(account_id)
-    if not account.active:
+    if not account.is_active_now():
         raise HTTPException(402, "订阅已失效，请续费后再生成。")
     if count > account.quota_remaining:
         raise HTTPException(400, f"额度不足，剩余 {account.quota_remaining} 个。")
@@ -108,7 +108,14 @@ def generate(background_tasks: BackgroundTasks, account_id: str = Form(...), cou
         raise HTTPException(400, f"视频校验失败：{exc}") from exc
 
     with lock:
-        account.reserve_generation(count)
+        try:
+            account.reserve_generation(count)
+        except PermissionError as exc:
+            source.unlink(missing_ok=True)
+            raise HTTPException(402, str(exc)) from exc
+        except ValueError as exc:
+            source.unlink(missing_ok=True)
+            raise HTTPException(400, str(exc)) from exc
         jobs[job_id] = {"job_id": job_id, "account_id": account_id, "status": "waiting", "count": count, "mode": mode, "created_at": datetime.now(timezone.utc).isoformat(), "outputs": []}
     background_tasks.add_task(_run_job, job_id, account_id, source, count, mode)
     return {"job_id": job_id, "status": "waiting", "reserved": count, "quota_remaining": account.quota_remaining}
