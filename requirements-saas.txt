@@ -1,4 +1,5 @@
 fastapi>=0.115,<1
 uvicorn[standard]>=0.30,<1
 python-multipart>=0.0.20,<1
+stripe>=15.4,<16
 pytest>=8,<9
