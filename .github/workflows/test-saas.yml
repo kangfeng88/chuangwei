@@ -20,4 +20,6 @@ jobs:
       - name: Compile Python modules
         run: python -m compileall -q app_config.py saas_quota.py saas_api.py saas_video_engine.py saas_web.py run_saas.py
       - name: Run tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: pytest -q
